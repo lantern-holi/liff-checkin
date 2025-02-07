@@ -16,18 +16,18 @@
       max-width: 100%;
       margin: auto;
     }
-    /* 時間 input：置中顯示，較大且唯讀 */
+    /* 時間 input：較大且置中，顯示秒數 */
     #datetime {
-      width: 300px;
-      height: 50px;
-      font-size: 22px;
+      width: 320px;
+      height: 60px;
+      font-size: 28px;
       margin: 20px auto;
       padding: 5px;
       background-color: #f5f5f5;
       text-align: center;
       border: none;
     }
-    /* 轉輪選擇器區：使用 flex 平均分配整個螢幕寬度 */
+    /* 轉輪選擇器區：使用 flex 平均分配寬度 */
     .picker-row {
       display: flex;
       justify-content: space-around;
@@ -46,17 +46,16 @@
       margin-bottom: 10px;
       font-size: 20px;
     }
-    /* 轉輪容器：寬度 100% 自適應父容器 */
+    /* 轉輪容器：高度 270px（9 個 30px 項目），寬度 100% */
     .picker-container {
       width: 100%;
-      height: 150px; /* 顯示 5 個 30px 高的項目 */
+      height: 270px;
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       border: 1px solid #ccc;
       position: relative;
       -ms-overflow-style: none;
       scrollbar-width: none;
-      /* 上下漸層遮罩 */
       mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
     }
@@ -67,12 +66,12 @@
       height: 30px;
       line-height: 30px;
       scroll-snap-align: center;
-      font-size: 22px; /* 預設字體較大 */
+      font-size: 22px;  /* 預設字體較大 */
       cursor: pointer;
-      color: #aaa; /* 預設淡灰色 */
+      color: #aaa;
       transition: font-size 0.2s, color 0.2s;
     }
-    /* 置中選中的數字：更大、更黑 */
+    /* 置中選中效果：更大、更醒目 */
     .selected-digit {
       font-size: 62px !important;
       color: #000 !important;
@@ -91,7 +90,7 @@
       border-bottom: 1px solid #000;
       pointer-events: none;
     }
-    /* 提示框：顯示當前置中數值 */
+    /* 提示框 */
     .picker-hint {
       font-size: 22px;
       color: #007AFF;
@@ -99,21 +98,21 @@
       margin-top: 5px;
     }
     button {
-      font-size: 22px;
-      padding: 12px 24px;
+      font-size: 28px;
+      padding: 16px 32px;
       margin-top: 20px;
     }
     #result {
       margin-top: 20px;
-      font-size: 22px;
+      font-size: 28px;
       font-weight: bold;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- 唯讀時間框：自動調整為台灣時間 -->
-    <input type="datetime-local" id="datetime" readonly>
+    <!-- 唯讀時間框，顯示當前時間，含秒 -->
+    <input type="datetime-local" id="datetime" step="1" readonly>
     
     <!-- 左中右轉輪選擇器 -->
     <div class="picker-row">
@@ -146,7 +145,7 @@
       try {
         await liff.init({ liffId: "YOUR_LIFF_ID" });
         console.log("LIFF 初始化成功！");
-        // 取得用戶資料，存入全域變數供後續使用
+        // 取得用戶資料
         const profile = await liff.getProfile();
         window.userProfile = profile;
       } catch (error) {
@@ -155,42 +154,50 @@
     }
     initializeLiff();
     
-    // 當頁面載入時初始化時間與轉輪選擇器
-    document.addEventListener("DOMContentLoaded", () => {
-      // 設定唯讀時間：以本地 UTC+8 顯示
+    // 設定時間欄位每秒更新（包含秒數）
+    function updateTime() {
       const now = new Date();
-      const tzoffset = now.getTimezoneOffset() * 60000;
+      const tzoffset = now.getTimezoneOffset() * 60000;  // 本地與UTC的差值（毫秒）
       const taipeiTime = new Date(now.getTime() - tzoffset + 8 * 3600000);
-      // 取前16個字元符合 datetime-local 格式 "YYYY-MM-DDThh:mm"
-      document.getElementById("datetime").value = taipeiTime.toISOString().slice(0,16);
-      
+      // 格式化為 "YYYY-MM-DDTHH:MM:SS"
+      const isoString = taipeiTime.toISOString();
+      const formatted = isoString.slice(0,19);
+      document.getElementById("datetime").value = formatted;
+    }
+    // 初始設定
+    updateTime();
+    setInterval(updateTime, 1000);
+    
+    // 當頁面載入時初始化轉輪選擇器
+    document.addEventListener("DOMContentLoaded", () => {
       // 建立轉輪選擇器：收縮壓 90～200 預設 120；舒張壓 60～150 預設 80；心率 40～180 預設 70
-      createPicker("picker-systolic", 90, 200, 120);
-      createPicker("picker-diastolic", 60, 150, 80);
-      createPicker("picker-heartRate", 40, 180, 70);
+      // 將補白數量調為 4，顯示 9 個項目
+      createPicker("picker-systolic", 90, 200, 120, 4);
+      createPicker("picker-diastolic", 60, 150, 80, 4);
+      createPicker("picker-heartRate", 40, 180, 70, 4);
       
-      // 延遲後自動滾動至預設值，並更新提示與置中樣式
+      // 延遲後自動滾動至預設值，並更新提示與置中選中樣式
       setTimeout(() => {
-        scrollToValue("picker-systolic", 120, 90);
-        scrollToValue("picker-diastolic", 80, 60);
-        scrollToValue("picker-heartRate", 70, 40);
-        updateHint("picker-systolic", 90, "hint-systolic");
-        updateHint("picker-diastolic", 60, "hint-diastolic");
-        updateHint("picker-heartRate", 40, "hint-heartRate");
+        scrollToValue("picker-systolic", 120, 90, 4);
+        scrollToValue("picker-diastolic", 80, 60, 4);
+        scrollToValue("picker-heartRate", 70, 40, 4);
+        updateHint("picker-systolic", 90, "hint-systolic", 4);
+        updateHint("picker-diastolic", 60, "hint-diastolic", 4);
+        updateHint("picker-heartRate", 40, "hint-heartRate", 4);
         updateSelectedStyle("picker-systolic");
         updateSelectedStyle("picker-diastolic");
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
-      // 為每個轉輪選擇器加入 scroll 事件，持續更新提示與選中樣式
+      // 為每個轉輪選擇器加入 scroll 事件：持續更新提示與選中效果
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
           if(id === "picker-systolic")
-            updateHint("picker-systolic", 90, "hint-systolic");
+            updateHint("picker-systolic", 90, "hint-systolic", 4);
           if(id === "picker-diastolic")
-            updateHint("picker-diastolic", 60, "hint-diastolic");
+            updateHint("picker-diastolic", 60, "hint-diastolic", 4);
           if(id === "picker-heartRate")
-            updateHint("picker-heartRate", 40, "hint-heartRate");
+            updateHint("picker-heartRate", 40, "hint-heartRate", 4);
           updateSelectedStyle(id);
         });
       });
@@ -198,15 +205,14 @@
     
     /**
      * 建立轉輪選擇器項目
-     * 於容器上下各補兩個空白項，確保中間（第三個項目）為置中選取項目
      * @param {string} containerId - 轉輪容器 ID
      * @param {number} min - 最小數值
      * @param {number} max - 最大數值
      * @param {number} defaultVal - 預設數值
+     * @param {number} paddingCount - 上下補白項數量（這裡傳入 4 表示總共顯示 9 個項目）
      */
-    function createPicker(containerId, min, max, defaultVal) {
+    function createPicker(containerId, min, max, defaultVal, paddingCount) {
       const container = document.getElementById(containerId);
-      const paddingCount = 2;
       // 上補空白項
       for (let i = 0; i < paddingCount; i++) {
         const blank = document.createElement("div");
@@ -217,9 +223,9 @@
       for (let i = min; i <= max; i++) {
         const numDiv = document.createElement("div");
         numDiv.textContent = i;
-        // 點擊後平滑滾動到該數字置中
+        // 點擊數字時，平滑滾動到該數字置中
         numDiv.addEventListener("click", () => {
-          scrollToValue(containerId, i, min);
+          scrollToValue(containerId, i, min, paddingCount);
         });
         container.appendChild(numDiv);
       }
@@ -232,16 +238,15 @@
     }
     
     /**
-     * 將轉輪選擇器捲動到指定數值，使該數字置中
-     * 計算公式：targetOffset = ((value - min + paddingCount) * itemHeight) - (容器高度/2 - itemHeight/2)
+     * 使轉輪選擇器捲動到指定數值，使該數字置中
      * @param {string} containerId - 轉輪容器 ID
      * @param {number} value - 目標數值
      * @param {number} min - 最小數值
+     * @param {number} paddingCount - 補白項數量
      */
-    function scrollToValue(containerId, value, min) {
+    function scrollToValue(containerId, value, min, paddingCount) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
-      const paddingCount = 2;
       const targetOffset = (value - min + paddingCount) * itemHeight - (container.clientHeight/2 - itemHeight/2);
       container.scrollTo({ top: targetOffset, behavior: "smooth" });
     }
@@ -250,12 +255,12 @@
      * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新提示框
      * @param {string} containerId - 轉輪容器 ID
      * @param {number} min - 最小數值
-     * @param {string} hintId - 對應提示框元素 ID
+     * @param {string} hintId - 提示框元素 ID
+     * @param {number} paddingCount - 補白項數量
      */
-    function updateHint(containerId, min, hintId) {
+    function updateHint(containerId, min, hintId, paddingCount) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
-      const paddingCount = 2;
       const centerPosition = container.scrollTop + (container.clientHeight/2 - itemHeight/2);
       const index = Math.round(centerPosition / itemHeight);
       const value = min + index - paddingCount;
@@ -264,7 +269,7 @@
     
     /**
      * 根據轉輪選擇器中與容器中心對齊的項目，
-     * 為該項目加入 .selected-digit 樣式，其餘項目移除
+     * 為該項目加入 .selected-digit 樣式，其餘項目移除該樣式
      * @param {string} containerId - 轉輪容器 ID
      */
     function updateSelectedStyle(containerId) {
@@ -295,19 +300,18 @@
     function getPickerValue(containerId, min) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
-      const paddingCount = 2;
+      const paddingCount = 4;
       const centerPosition = container.scrollTop + (container.clientHeight/2 - itemHeight/2);
       const index = Math.round(centerPosition / itemHeight);
       return min + index - paddingCount;
     }
     
-    // 送出按鈕事件：收集所有數據後發送至後端或 Make Webhook
+    // 送出按鈕事件：收集時間、轉輪數值及用戶資料後以 JSON POST 到後端（或 Make Webhook）
     document.getElementById("submitBtn").addEventListener("click", async () => {
       const datetime = document.getElementById("datetime").value;
       const systolic = getPickerValue("picker-systolic", 90);
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
-      // 取得用戶資料（例如 userId）
       const userId = window.userProfile ? window.userProfile.userId : "";
       
       const data = { datetime, systolic, diastolic, heartRate, userId };
