@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>逸香血壓紀錄簽到用</title>
+  <!-- 設定 viewport，禁止縮放 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body {
@@ -11,21 +13,21 @@
       text-align: center;
     }
     .container {
-      max-width: 100%; /* 讓容器占滿整個螢幕 */
+      max-width: 100%;
       margin: auto;
     }
-    /* 時間 input 調整 */
+    /* 時間 input：置中顯示，較大且唯讀 */
     #datetime {
       width: 300px;
-      height: 40px;
-      font-size: 18px;
+      height: 50px;
+      font-size: 22px;
       margin: 20px auto;
       padding: 5px;
       background-color: #f5f5f5;
       text-align: center;
       border: none;
     }
-    /* 轉輪選擇器區：橫向排列 */
+    /* 轉輪選擇器區：使用 flex 平均分配整個螢幕寬度 */
     .picker-row {
       display: flex;
       justify-content: space-around;
@@ -42,18 +44,19 @@
     .picker-label {
       font-weight: bold;
       margin-bottom: 10px;
+      font-size: 20px;
     }
-    /* 調整轉輪容器寬度為 100% */
+    /* 轉輪容器：寬度 100% 自適應父容器 */
     .picker-container {
       width: 100%;
-      height: 150px;
+      height: 150px; /* 顯示 5 個 30px 高的項目 */
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       border: 1px solid #ccc;
       position: relative;
       -ms-overflow-style: none;
       scrollbar-width: none;
-      /* 漸層遮罩 */
+      /* 上下漸層遮罩 */
       mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
     }
@@ -64,16 +67,18 @@
       height: 30px;
       line-height: 30px;
       scroll-snap-align: center;
-      font-size: 18px;
+      font-size: 22px; /* 預設字體較大 */
       cursor: pointer;
-      color: #aaa;
+      color: #aaa; /* 預設淡灰色 */
       transition: font-size 0.2s, color 0.2s;
     }
+    /* 置中選中的數字：更大、更黑 */
     .selected-digit {
       font-size: 62px !important;
       color: #000 !important;
       font-weight: bold !important;
     }
+    /* 中央指示線 */
     .picker-container::after {
       content: "";
       position: absolute;
@@ -86,27 +91,28 @@
       border-bottom: 1px solid #000;
       pointer-events: none;
     }
+    /* 提示框：顯示當前置中數值 */
     .picker-hint {
-      font-size: 16px;
+      font-size: 22px;
       color: #007AFF;
       font-weight: bold;
       margin-top: 5px;
     }
     button {
-      font-size: 16px;
-      padding: 10px 20px;
+      font-size: 22px;
+      padding: 12px 24px;
       margin-top: 20px;
     }
     #result {
       margin-top: 20px;
-      font-size: 16px;
+      font-size: 22px;
       font-weight: bold;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- 唯讀時間框 -->
+    <!-- 唯讀時間框：自動調整為台灣時間 -->
     <input type="datetime-local" id="datetime" readonly>
     
     <!-- 左中右轉輪選擇器 -->
@@ -129,7 +135,7 @@
     </div>
     
     <!-- 送出按鈕 -->
-    <button id="submitBtn">送出記錄</button>
+    <button id="submitBtn">送出簽到記錄</button>
     
     <div id="result"></div>
   </div>
@@ -138,9 +144,9 @@
     // LIFF 初始化（請替換 YOUR_LIFF_ID）
     async function initializeLiff() {
       try {
-        await liff.init({ liffId: "2006876503-3jBVjEAR" });
+        await liff.init({ liffId: "YOUR_LIFF_ID" });
         console.log("LIFF 初始化成功！");
-        // 取得用戶資料
+        // 取得用戶資料，存入全域變數供後續使用
         const profile = await liff.getProfile();
         window.userProfile = profile;
       } catch (error) {
@@ -149,16 +155,21 @@
     }
     initializeLiff();
     
+    // 當頁面載入時初始化時間與轉輪選擇器
     document.addEventListener("DOMContentLoaded", () => {
+      // 設定唯讀時間：以本地 UTC+8 顯示
       const now = new Date();
-      const formatted = now.toISOString().slice(0,16);
-      document.getElementById("datetime").value = formatted;
+      const tzoffset = now.getTimezoneOffset() * 60000;
+      const taipeiTime = new Date(now.getTime() - tzoffset + 8 * 3600000);
+      // 取前16個字元符合 datetime-local 格式 "YYYY-MM-DDThh:mm"
+      document.getElementById("datetime").value = taipeiTime.toISOString().slice(0,16);
       
-      // 建立轉輪選擇器
+      // 建立轉輪選擇器：收縮壓 90～200 預設 120；舒張壓 60～150 預設 80；心率 40～180 預設 70
       createPicker("picker-systolic", 90, 200, 120);
       createPicker("picker-diastolic", 60, 150, 80);
       createPicker("picker-heartRate", 40, 180, 70);
       
+      // 延遲後自動滾動至預設值，並更新提示與置中樣式
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90);
         scrollToValue("picker-diastolic", 80, 60);
@@ -171,6 +182,7 @@
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
+      // 為每個轉輪選擇器加入 scroll 事件，持續更新提示與選中樣式
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
           if(id === "picker-systolic")
@@ -184,22 +196,34 @@
       });
     });
     
+    /**
+     * 建立轉輪選擇器項目
+     * 於容器上下各補兩個空白項，確保中間（第三個項目）為置中選取項目
+     * @param {string} containerId - 轉輪容器 ID
+     * @param {number} min - 最小數值
+     * @param {number} max - 最大數值
+     * @param {number} defaultVal - 預設數值
+     */
     function createPicker(containerId, min, max, defaultVal) {
       const container = document.getElementById(containerId);
       const paddingCount = 2;
+      // 上補空白項
       for (let i = 0; i < paddingCount; i++) {
         const blank = document.createElement("div");
         blank.innerHTML = "&nbsp;";
         container.appendChild(blank);
       }
+      // 建立數字項目
       for (let i = min; i <= max; i++) {
         const numDiv = document.createElement("div");
         numDiv.textContent = i;
+        // 點擊後平滑滾動到該數字置中
         numDiv.addEventListener("click", () => {
           scrollToValue(containerId, i, min);
         });
         container.appendChild(numDiv);
       }
+      // 下補空白項
       for (let i = 0; i < paddingCount; i++) {
         const blank = document.createElement("div");
         blank.innerHTML = "&nbsp;";
@@ -207,6 +231,13 @@
       }
     }
     
+    /**
+     * 將轉輪選擇器捲動到指定數值，使該數字置中
+     * 計算公式：targetOffset = ((value - min + paddingCount) * itemHeight) - (容器高度/2 - itemHeight/2)
+     * @param {string} containerId - 轉輪容器 ID
+     * @param {number} value - 目標數值
+     * @param {number} min - 最小數值
+     */
     function scrollToValue(containerId, value, min) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -215,6 +246,12 @@
       container.scrollTo({ top: targetOffset, behavior: "smooth" });
     }
     
+    /**
+     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新提示框
+     * @param {string} containerId - 轉輪容器 ID
+     * @param {number} min - 最小數值
+     * @param {string} hintId - 對應提示框元素 ID
+     */
     function updateHint(containerId, min, hintId) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -225,6 +262,11 @@
       document.getElementById(hintId).textContent = value;
     }
     
+    /**
+     * 根據轉輪選擇器中與容器中心對齊的項目，
+     * 為該項目加入 .selected-digit 樣式，其餘項目移除
+     * @param {string} containerId - 轉輪容器 ID
+     */
     function updateSelectedStyle(containerId) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -245,6 +287,11 @@
       }
     }
     
+    /**
+     * 取得轉輪選擇器目前置中選中的數值（用於送出資料）
+     * @param {string} containerId - 轉輪容器 ID
+     * @param {number} min - 最小數值
+     */
     function getPickerValue(containerId, min) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -254,11 +301,13 @@
       return min + index - paddingCount;
     }
     
+    // 送出按鈕事件：收集所有數據後發送至後端或 Make Webhook
     document.getElementById("submitBtn").addEventListener("click", async () => {
       const datetime = document.getElementById("datetime").value;
       const systolic = getPickerValue("picker-systolic", 90);
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
+      // 取得用戶資料（例如 userId）
       const userId = window.userProfile ? window.userProfile.userId : "";
       
       const data = { datetime, systolic, diastolic, heartRate, userId };
