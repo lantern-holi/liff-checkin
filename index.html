@@ -99,7 +99,7 @@
       font-size: 28px;
       font-weight: bold;
     }
-    /* 時間 input：放在送出按鈕下方，尺寸較小 */
+    /* 時間 input：放在送出按鈕下方 */
     #datetime {
       width: 200px;
       height: 40px;
@@ -110,21 +110,21 @@
       text-align: center;
       border: none;
     }
-    /* 用於顯示上下文資訊的區塊 */
-    #contextInfo {
+    /* 除錯區：用於顯示上下文與錯誤訊息 */
+    #debugInfo {
       text-align: left;
       background: #eee;
       padding: 10px;
       font-size: 16px;
       margin-top: 20px;
-      max-height: 200px;
+      max-height: 300px;
       overflow-y: auto;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- 最上方：轉輪選擇器 -->
+    <!-- 轉輪選擇器區 -->
     <div class="picker-row">
       <div class="picker-column">
         <div class="picker-label">收縮壓</div>
@@ -143,42 +143,47 @@
       </div>
     </div>
     
-    <!-- 送出按鈕：觸發發送訊息 -->
+    <!-- 送出按鈕 -->
     <button id="submitBtn">送出簽到記錄</button>
     
-    <!-- 時間欄位：放在送出按鈕下方 -->
+    <!-- 時間欄位 -->
     <input type="datetime-local" id="datetime" step="1" readonly>
     
+    <!-- 結果訊息 -->
     <div id="result"></div>
     
-    <!-- 用於顯示 liff.getContext() 的資訊 -->
-    <pre id="contextInfo"></pre>
+    <!-- 除錯資訊區 -->
+    <pre id="debugInfo"></pre>
   </div>
   
   <script>
+    // 將除錯訊息輸出到網頁
+    function logDebug(message) {
+      const debugEl = document.getElementById("debugInfo");
+      debugEl.innerText += message + "\n";
+    }
+    
     // LIFF 初始化，請替換 YOUR_LIFF_ID 為你的 LIFF ID
     async function initializeLiff() {
       try {
         await liff.init({ liffId: "2006876503-3jBVjEAR" });
-        console.log("LIFF 初始化成功！");
-        // 檢查是否在 LINE App 內部
+        logDebug("LIFF 初始化成功！");
         if (!liff.isInClient()) {
           alert("請在 LINE App 中使用此功能！");
         }
         const profile = await liff.getProfile();
         window.userProfile = profile;
-        console.log("User profile:", profile);
+        logDebug("User profile: " + JSON.stringify(profile, null, 2));
         const context = liff.getContext();
-        console.log("Context:", context);
-        // 將上下文資訊顯示在頁面上
-        document.getElementById("contextInfo").innerText = JSON.stringify(context, null, 2);
+        logDebug("Context: " + JSON.stringify(context, null, 2));
       } catch (error) {
+        logDebug("LIFF 初始化失敗：" + error);
         console.error("LIFF 初始化失敗：", error);
       }
     }
     initializeLiff();
     
-    // 每秒更新時間，使用本地時間（根據裝置設定）
+    // 每秒更新時間，使用本地時間格式
     function updateTime() {
       const now = new Date();
       const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,19);
@@ -187,14 +192,12 @@
     updateTime();
     setInterval(updateTime, 1000);
     
-    // 當頁面載入時初始化轉輪選擇器
+    // 初始化轉輪選擇器
     document.addEventListener("DOMContentLoaded", () => {
-      // 建立轉輪選擇器：補白數量設定為 4（共顯示 9 個項目）
       createPicker("picker-systolic", 90, 200, 120, 4);
       createPicker("picker-diastolic", 60, 150, 80, 4);
       createPicker("picker-heartRate", 40, 180, 70, 4);
       
-      // 延遲後自動滾動至預設值並更新提示與置中選中效果
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90, 4);
         scrollToValue("picker-diastolic", 80, 60, 4);
@@ -207,7 +210,6 @@
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
-      // 為每個轉輪選擇器加入 scroll 事件更新提示與選中效果
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
           if (id === "picker-systolic")
@@ -223,11 +225,6 @@
     
     /**
      * 建立轉輪選擇器項目
-     * @param {string} containerId - 轉輪容器 ID
-     * @param {number} min - 最小數值
-     * @param {number} max - 最大數值
-     * @param {number} defaultVal - 預設數值
-     * @param {number} paddingCount - 補白項數量（例如 4 表示共顯示 9 個項目）
      */
     function createPicker(containerId, min, max, defaultVal, paddingCount) {
       const container = document.getElementById(containerId);
@@ -252,11 +249,7 @@
     }
     
     /**
-     * 使轉輪選擇器捲動到指定數值，使該數字置中
-     * @param {string} containerId - 轉輪容器 ID
-     * @param {number} value - 目標數值
-     * @param {number} min - 最小數值
-     * @param {number} paddingCount - 補白項數量
+     * 使轉輪選擇器捲動到指定數值
      */
     function scrollToValue(containerId, value, min, paddingCount) {
       const container = document.getElementById(containerId);
@@ -266,11 +259,7 @@
     }
     
     /**
-     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新對應提示框
-     * @param {string} containerId - 轉輪容器 ID
-     * @param {number} min - 最小數值
-     * @param {string} hintId - 提示框元素 ID
-     * @param {number} paddingCount - 補白項數量
+     * 更新提示框顯示的值
      */
     function updateHint(containerId, min, hintId, paddingCount) {
       const container = document.getElementById(containerId);
@@ -282,9 +271,7 @@
     }
     
     /**
-     * 根據轉輪選擇器中與容器中心對齊的項目，
-     * 為該項目加入 .selected-digit 樣式，其餘項目移除該樣式
-     * @param {string} containerId - 轉輪容器 ID
+     * 更新置中選中項目的樣式
      */
     function updateSelectedStyle(containerId) {
       const container = document.getElementById(containerId);
@@ -307,9 +294,7 @@
     }
     
     /**
-     * 取得轉輪選擇器目前置中選中的數值（用於送出資料）
-     * @param {string} containerId - 轉輪容器 ID
-     * @param {number} min - 最小數值
+     * 取得目前置中選中的數值
      */
     function getPickerValue(containerId, min) {
       const container = document.getElementById(containerId);
@@ -320,16 +305,17 @@
       return min + index - paddingCount;
     }
     
-    // 送出按鈕事件：改為使用 liff.sendMessages() 發送固定格式訊息
+    // 送出按鈕事件：使用 liff.sendMessages() 發送固定格式訊息
     document.getElementById("submitBtn").addEventListener("click", async () => {
-      // 檢查是否在 LINE App 內部
+      // 確認是否在 LINE App 中
       if (!liff.isInClient()) {
         alert("請在 LINE App 中使用此功能！");
         return;
       }
-      // 檢查聊天上下文是否存在有效資訊
+      
+      // 檢查上下文是否有 userId 或 utouId（接受 both "user" 和 "utou"）
       const context = liff.getContext();
-      if (!context || !context.conversationType || context.conversationType !== "user") {
+      if (!context || (!context.userId && !context.utouId)) {
         alert("目前無有效聊天上下文，請從個人對話中使用此功能。");
         return;
       }
@@ -338,9 +324,8 @@
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
       
-      // 組合固定格式訊息
       const messageText = `上課簽到\n本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
-      console.log("準備發送訊息：", messageText);
+      logDebug("準備發送訊息：" + messageText);
       
       try {
         await liff.sendMessages([
@@ -354,6 +339,7 @@
       } catch (error) {
         console.error("訊息送出失敗：", error);
         document.getElementById("result").textContent = "訊息送出失敗，請稍後再試。";
+        logDebug("訊息送出失敗：" + JSON.stringify(error));
       }
     });
   </script>
