@@ -13,26 +13,11 @@
       text-align: center;
       position: relative;
     }
-    /* 時間 input：置左上，尺寸較小 */
-    #datetime {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      width: 200px;
-      height: 40px;
-      font-size: 20px;
-      padding: 5px;
-      background-color: #f5f5f5;
-      text-align: center;
-      border: none;
-      margin: 0;
-    }
-    /* 為避免時間欄重疊轉輪區，整個容器下移 */
     .container {
       max-width: 100%;
-      margin: 80px auto 20px auto; /* 上邊留空以容納左上時間欄 */
+      margin: auto;
     }
-    /* 轉輪選擇器區：使用 flex 平均分配寬度 */
+    /* 轉輪選擇器區：使用 flex 平均分配寬度，放在最上面 */
     .picker-row {
       display: flex;
       justify-content: space-around;
@@ -71,7 +56,7 @@
       height: 30px;
       line-height: 30px;
       scroll-snap-align: center;
-      font-size: 22px;  /* 預設字體 */
+      font-size: 22px;
       cursor: pointer;
       color: #aaa;
       transition: font-size 0.2s, color 0.2s;
@@ -95,30 +80,41 @@
       border-bottom: 1px solid #000;
       pointer-events: none;
     }
-    /* 提示框：顯示當前置中數值 */
+    /* 提示框 */
     .picker-hint {
       font-size: 22px;
       color: #007AFF;
       font-weight: bold;
       margin-top: 5px;
     }
+    /* 送出按鈕 */
     button {
       font-size: 28px;
       padding: 16px 32px;
       margin-top: 20px;
     }
+    /* 調整結果文字 */
     #result {
       margin-top: 20px;
       font-size: 28px;
       font-weight: bold;
     }
+    /* 時間 input 放在送出按鈕下方，尺寸縮小 */
+    #datetime {
+      width: 200px;
+      height: 40px;
+      font-size: 20px;
+      margin: 20px auto;
+      padding: 5px;
+      background-color: #f5f5f5;
+      text-align: center;
+      border: none;
+    }
   </style>
 </head>
 <body>
-  <!-- 時間 input 放在左上 -->
-  <input type="datetime-local" id="datetime" step="1" readonly>
   <div class="container">
-    <!-- 左中右轉輪選擇器 -->
+    <!-- 最上方：轉輪選擇器 -->
     <div class="picker-row">
       <div class="picker-column">
         <div class="picker-label">收縮壓</div>
@@ -140,6 +136,9 @@
     <!-- 送出按鈕 -->
     <button id="submitBtn">送出簽到記錄</button>
     
+    <!-- 時間欄位：放在送出按鈕下方 -->
+    <input type="datetime-local" id="datetime" step="1" readonly>
+    
     <div id="result"></div>
   </div>
   
@@ -158,26 +157,24 @@
     }
     initializeLiff();
     
-    // 每秒更新時間（以台灣時間 UTC+8 顯示）
+    // 每秒更新時間（以本地時間顯示，不做額外調整）
     function updateTime() {
       const now = new Date();
-      const tzoffset = now.getTimezoneOffset() * 60000;
-      const taipeiTime = new Date(now.getTime() - tzoffset + 8 * 3600000);
-      const isoString = taipeiTime.toISOString();
-      const formatted = isoString.slice(0,19);  // "YYYY-MM-DDTHH:MM:SS"
-      document.getElementById("datetime").value = formatted;
+      const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,19);
+      document.getElementById("datetime").value = localISOTime;
     }
     updateTime();
     setInterval(updateTime, 1000);
     
     // 當頁面載入時初始化轉輪選擇器
     document.addEventListener("DOMContentLoaded", () => {
-      // 建立轉輪選擇器：補白數量改為 4 (共 9 項)
+      // 建立轉輪選擇器：收縮壓 90～200 預設 120；舒張壓 60～150 預設 80；心率 40～180 預設 70
+      // 補白項數量設定為 4，顯示 9 個項目
       createPicker("picker-systolic", 90, 200, 120, 4);
       createPicker("picker-diastolic", 60, 150, 80, 4);
       createPicker("picker-heartRate", 40, 180, 70, 4);
       
-      // 延遲後自動滾動至預設值並更新提示與選中樣式
+      // 延遲後自動滾動至預設值，並更新提示與置中選中樣式
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90, 4);
         scrollToValue("picker-diastolic", 80, 60, 4);
@@ -190,14 +187,14 @@
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
-      // 監聽 scroll 事件，持續更新提示與選中效果
+      // 監聽 scroll 事件，持續更新提示與選中樣式
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
-          if(id === "picker-systolic")
+          if (id === "picker-systolic")
             updateHint("picker-systolic", 90, "hint-systolic", 4);
-          if(id === "picker-diastolic")
+          if (id === "picker-diastolic")
             updateHint("picker-diastolic", 60, "hint-diastolic", 4);
-          if(id === "picker-heartRate")
+          if (id === "picker-heartRate")
             updateHint("picker-heartRate", 40, "hint-heartRate", 4);
           updateSelectedStyle(id);
         });
@@ -306,7 +303,7 @@
       return min + index - paddingCount;
     }
     
-    // 送出按鈕事件：收集所有資料後，以 JSON 格式 POST 到後端（或 Make Webhook）
+    // 送出按鈕事件：收集時間、轉輪選擇器數值及用戶資料後，將資料以 JSON POST 至後端（或 Make Webhook）
     document.getElementById("submitBtn").addEventListener("click", async () => {
       const datetime = document.getElementById("datetime").value;
       const systolic = getPickerValue("picker-systolic", 90);
