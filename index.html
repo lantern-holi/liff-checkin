@@ -110,6 +110,16 @@
       text-align: center;
       border: none;
     }
+    /* 用於顯示上下文資訊的區塊 */
+    #contextInfo {
+      text-align: left;
+      background: #eee;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -140,6 +150,9 @@
     <input type="datetime-local" id="datetime" step="1" readonly>
     
     <div id="result"></div>
+    
+    <!-- 用於顯示 liff.getContext() 的資訊 -->
+    <pre id="contextInfo"></pre>
   </div>
   
   <script>
@@ -148,14 +161,17 @@
       try {
         await liff.init({ liffId: "2006876503-3jBVjEAR" });
         console.log("LIFF 初始化成功！");
-        // 檢查是否在 LINE 客戶端中執行
+        // 檢查是否在 LINE App 內部
         if (!liff.isInClient()) {
           alert("請在 LINE App 中使用此功能！");
         }
         const profile = await liff.getProfile();
         window.userProfile = profile;
         console.log("User profile:", profile);
-        console.log("Context:", liff.getContext());
+        const context = liff.getContext();
+        console.log("Context:", context);
+        // 將上下文資訊顯示在頁面上
+        document.getElementById("contextInfo").innerText = JSON.stringify(context, null, 2);
       } catch (error) {
         console.error("LIFF 初始化失敗：", error);
       }
@@ -178,7 +194,7 @@
       createPicker("picker-diastolic", 60, 150, 80, 4);
       createPicker("picker-heartRate", 40, 180, 70, 4);
       
-      // 延遲後自動滾動至預設值，並更新提示與置中選中效果
+      // 延遲後自動滾動至預設值並更新提示與置中選中效果
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90, 4);
         scrollToValue("picker-diastolic", 80, 60, 4);
@@ -191,7 +207,7 @@
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
-      // 為每個轉輪選擇器加入 scroll 事件，持續更新提示與選中效果
+      // 為每個轉輪選擇器加入 scroll 事件更新提示與選中效果
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
           if (id === "picker-systolic")
@@ -306,16 +322,15 @@
     
     // 送出按鈕事件：改為使用 liff.sendMessages() 發送固定格式訊息
     document.getElementById("submitBtn").addEventListener("click", async () => {
-      // 檢查是否在 LINE App 內部執行
+      // 檢查是否在 LINE App 內部
       if (!liff.isInClient()) {
         alert("請在 LINE App 中使用此功能！");
         return;
       }
-      
-      // 取得聊天上下文並檢查是否有 conversationId
+      // 檢查聊天上下文是否存在有效資訊
       const context = liff.getContext();
-      if (!context || !context.conversationType) {
-        alert("目前無有效聊天上下文，無法發送訊息。");
+      if (!context || !context.conversationType || context.conversationType !== "user") {
+        alert("目前無有效聊天上下文，請從個人對話中使用此功能。");
         return;
       }
       
