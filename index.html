@@ -305,13 +305,13 @@
       const heartRate = getPickerValue("picker-heartRate", 40);
       
       // 固定格式訊息，如："本日血壓紀錄為125/95/71"
-      const messageText = `本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
+      const messageText = `上課簽到\n本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
       
       try {
         await liff.sendMessages([
           {
             type: "text",
-            text: "測試"
+            text: messageText
           }
         ]);
         document.getElementById("result").textContent = "訊息已送出！";
