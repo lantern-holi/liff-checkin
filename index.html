@@ -11,21 +11,26 @@
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       margin: 20px;
       text-align: center;
+      position: relative;
     }
-    .container {
-      max-width: 100%;
-      margin: auto;
-    }
-    /* 時間 input：較大且置中，顯示秒數 */
+    /* 時間 input：置左上，尺寸較小 */
     #datetime {
-      width: 320px;
-      height: 60px;
-      font-size: 28px;
-      margin: 20px auto;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 200px;
+      height: 40px;
+      font-size: 20px;
       padding: 5px;
       background-color: #f5f5f5;
       text-align: center;
       border: none;
+      margin: 0;
+    }
+    /* 為避免時間欄重疊轉輪區，整個容器下移 */
+    .container {
+      max-width: 100%;
+      margin: 80px auto 20px auto; /* 上邊留空以容納左上時間欄 */
     }
     /* 轉輪選擇器區：使用 flex 平均分配寬度 */
     .picker-row {
@@ -66,12 +71,12 @@
       height: 30px;
       line-height: 30px;
       scroll-snap-align: center;
-      font-size: 22px;  /* 預設字體較大 */
+      font-size: 22px;  /* 預設字體 */
       cursor: pointer;
       color: #aaa;
       transition: font-size 0.2s, color 0.2s;
     }
-    /* 置中選中效果：更大、更醒目 */
+    /* 置中選中效果 */
     .selected-digit {
       font-size: 62px !important;
       color: #000 !important;
@@ -90,7 +95,7 @@
       border-bottom: 1px solid #000;
       pointer-events: none;
     }
-    /* 提示框 */
+    /* 提示框：顯示當前置中數值 */
     .picker-hint {
       font-size: 22px;
       color: #007AFF;
@@ -110,10 +115,9 @@
   </style>
 </head>
 <body>
+  <!-- 時間 input 放在左上 -->
+  <input type="datetime-local" id="datetime" step="1" readonly>
   <div class="container">
-    <!-- 唯讀時間框，顯示當前時間，含秒 -->
-    <input type="datetime-local" id="datetime" step="1" readonly>
-    
     <!-- 左中右轉輪選擇器 -->
     <div class="picker-row">
       <div class="picker-column">
@@ -154,29 +158,26 @@
     }
     initializeLiff();
     
-    // 設定時間欄位每秒更新（包含秒數）
+    // 每秒更新時間（以台灣時間 UTC+8 顯示）
     function updateTime() {
       const now = new Date();
-      const tzoffset = now.getTimezoneOffset() * 60000;  // 本地與UTC的差值（毫秒）
+      const tzoffset = now.getTimezoneOffset() * 60000;
       const taipeiTime = new Date(now.getTime() - tzoffset + 8 * 3600000);
-      // 格式化為 "YYYY-MM-DDTHH:MM:SS"
       const isoString = taipeiTime.toISOString();
-      const formatted = isoString.slice(0,19);
+      const formatted = isoString.slice(0,19);  // "YYYY-MM-DDTHH:MM:SS"
       document.getElementById("datetime").value = formatted;
     }
-    // 初始設定
     updateTime();
     setInterval(updateTime, 1000);
     
     // 當頁面載入時初始化轉輪選擇器
     document.addEventListener("DOMContentLoaded", () => {
-      // 建立轉輪選擇器：收縮壓 90～200 預設 120；舒張壓 60～150 預設 80；心率 40～180 預設 70
-      // 將補白數量調為 4，顯示 9 個項目
+      // 建立轉輪選擇器：補白數量改為 4 (共 9 項)
       createPicker("picker-systolic", 90, 200, 120, 4);
       createPicker("picker-diastolic", 60, 150, 80, 4);
       createPicker("picker-heartRate", 40, 180, 70, 4);
       
-      // 延遲後自動滾動至預設值，並更新提示與置中選中樣式
+      // 延遲後自動滾動至預設值並更新提示與選中樣式
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90, 4);
         scrollToValue("picker-diastolic", 80, 60, 4);
@@ -189,7 +190,7 @@
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
-      // 為每個轉輪選擇器加入 scroll 事件：持續更新提示與選中效果
+      // 監聽 scroll 事件，持續更新提示與選中效果
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
           if(id === "picker-systolic")
@@ -209,7 +210,7 @@
      * @param {number} min - 最小數值
      * @param {number} max - 最大數值
      * @param {number} defaultVal - 預設數值
-     * @param {number} paddingCount - 上下補白項數量（這裡傳入 4 表示總共顯示 9 個項目）
+     * @param {number} paddingCount - 補白項數量（例如 4 表示共顯示 9 個項目）
      */
     function createPicker(containerId, min, max, defaultVal, paddingCount) {
       const container = document.getElementById(containerId);
@@ -223,7 +224,6 @@
       for (let i = min; i <= max; i++) {
         const numDiv = document.createElement("div");
         numDiv.textContent = i;
-        // 點擊數字時，平滑滾動到該數字置中
         numDiv.addEventListener("click", () => {
           scrollToValue(containerId, i, min, paddingCount);
         });
@@ -252,7 +252,7 @@
     }
     
     /**
-     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新提示框
+     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新對應提示框
      * @param {string} containerId - 轉輪容器 ID
      * @param {number} min - 最小數值
      * @param {string} hintId - 提示框元素 ID
@@ -306,7 +306,7 @@
       return min + index - paddingCount;
     }
     
-    // 送出按鈕事件：收集時間、轉輪數值及用戶資料後以 JSON POST 到後端（或 Make Webhook）
+    // 送出按鈕事件：收集所有資料後，以 JSON 格式 POST 到後端（或 Make Webhook）
     document.getElementById("submitBtn").addEventListener("click", async () => {
       const datetime = document.getElementById("datetime").value;
       const systolic = getPickerValue("picker-systolic", 90);
