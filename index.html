@@ -17,7 +17,7 @@
       max-width: 100%;
       margin: auto;
     }
-    /* 轉輪選擇器區：使用 flex 平均分配寬度 */
+    /* 轉輪選擇器區 */
     .picker-row {
       display: flex;
       justify-content: space-around;
@@ -36,7 +36,7 @@
       margin-bottom: 10px;
       font-size: 20px;
     }
-    /* 轉輪容器：高度 270px（9 個 30px 項目），寬度 100% */
+    /* 轉輪容器：高度 270px (9 個項目) */
     .picker-container {
       width: 100%;
       height: 270px;
@@ -61,13 +61,11 @@
       color: #aaa;
       transition: font-size 0.2s, color 0.2s;
     }
-    /* 置中選中效果 */
     .selected-digit {
       font-size: 62px !important;
       color: #000 !important;
       font-weight: bold !important;
     }
-    /* 中央指示線 */
     .picker-container::after {
       content: "";
       position: absolute;
@@ -80,26 +78,22 @@
       border-bottom: 1px solid #000;
       pointer-events: none;
     }
-    /* 提示框 */
     .picker-hint {
       font-size: 22px;
       color: #007AFF;
       font-weight: bold;
       margin-top: 5px;
     }
-    /* 送出按鈕：較大 */
     button {
       font-size: 28px;
       padding: 16px 32px;
       margin-top: 20px;
     }
-    /* 結果訊息 */
     #result {
       margin-top: 20px;
       font-size: 28px;
       font-weight: bold;
     }
-    /* 時間 input：放在送出按鈕下方 */
     #datetime {
       width: 200px;
       height: 40px;
@@ -110,7 +104,6 @@
       text-align: center;
       border: none;
     }
-    /* 除錯區：用於顯示上下文與錯誤訊息 */
     #debugInfo {
       text-align: left;
       background: #eee;
@@ -124,7 +117,7 @@
 </head>
 <body>
   <div class="container">
-    <!-- 轉輪選擇器區 -->
+    <!-- 轉輪選擇器 -->
     <div class="picker-row">
       <div class="picker-column">
         <div class="picker-label">收縮壓</div>
@@ -152,7 +145,7 @@
     <!-- 結果訊息 -->
     <div id="result"></div>
     
-    <!-- 除錯資訊區 -->
+    <!-- 除錯資訊 -->
     <pre id="debugInfo"></pre>
   </div>
   
@@ -163,7 +156,6 @@
       debugEl.innerText += message + "\n";
     }
     
-    // LIFF 初始化，請替換 YOUR_LIFF_ID 為你的 LIFF ID
     async function initializeLiff() {
       try {
         await liff.init({ liffId: "2006876503-3jBVjEAR" });
@@ -183,7 +175,6 @@
     }
     initializeLiff();
     
-    // 每秒更新時間，使用本地時間格式
     function updateTime() {
       const now = new Date();
       const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,19);
@@ -192,7 +183,6 @@
     updateTime();
     setInterval(updateTime, 1000);
     
-    // 初始化轉輪選擇器
     document.addEventListener("DOMContentLoaded", () => {
       createPicker("picker-systolic", 90, 200, 120, 4);
       createPicker("picker-diastolic", 60, 150, 80, 4);
@@ -223,9 +213,6 @@
       });
     });
     
-    /**
-     * 建立轉輪選擇器項目
-     */
     function createPicker(containerId, min, max, defaultVal, paddingCount) {
       const container = document.getElementById(containerId);
       for (let i = 0; i < paddingCount; i++) {
@@ -248,9 +235,6 @@
       }
     }
     
-    /**
-     * 使轉輪選擇器捲動到指定數值
-     */
     function scrollToValue(containerId, value, min, paddingCount) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -258,9 +242,6 @@
       container.scrollTo({ top: targetOffset, behavior: "smooth" });
     }
     
-    /**
-     * 更新提示框顯示的值
-     */
     function updateHint(containerId, min, hintId, paddingCount) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -270,9 +251,6 @@
       document.getElementById(hintId).textContent = value;
     }
     
-    /**
-     * 更新置中選中項目的樣式
-     */
     function updateSelectedStyle(containerId) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -293,9 +271,6 @@
       }
     }
     
-    /**
-     * 取得目前置中選中的數值
-     */
     function getPickerValue(containerId, min) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
@@ -305,15 +280,13 @@
       return min + index - paddingCount;
     }
     
-    // 送出按鈕事件：使用 liff.sendMessages() 發送固定格式訊息
     document.getElementById("submitBtn").addEventListener("click", async () => {
-      // 確認是否在 LINE App 中
       if (!liff.isInClient()) {
         alert("請在 LINE App 中使用此功能！");
         return;
       }
       
-      // 檢查上下文是否有 userId 或 utouId（接受 both "user" 和 "utou"）
+      // 修改上下文檢查，接受 utou 或 user
       const context = liff.getContext();
       if (!context || (!context.userId && !context.utouId)) {
         alert("目前無有效聊天上下文，請從個人對話中使用此功能。");
