@@ -133,7 +133,7 @@
       </div>
     </div>
     
-    <!-- 送出按鈕：改為觸發 LINE 傳送訊息 -->
+    <!-- 送出按鈕：觸發發送訊息 -->
     <button id="submitBtn">送出簽到記錄</button>
     
     <!-- 時間欄位：放在送出按鈕下方 -->
@@ -143,20 +143,26 @@
   </div>
   
   <script>
-    // LIFF 初始化（請替換 YOUR_LIFF_ID）
+    // LIFF 初始化，請替換 YOUR_LIFF_ID 為你的 LIFF ID
     async function initializeLiff() {
       try {
         await liff.init({ liffId: "2006876503-3jBVjEAR" });
         console.log("LIFF 初始化成功！");
+        // 檢查是否在 LINE 客戶端中執行
+        if (!liff.isInClient()) {
+          alert("請在 LINE App 中使用此功能！");
+        }
         const profile = await liff.getProfile();
         window.userProfile = profile;
+        console.log("User profile:", profile);
+        console.log("Context:", liff.getContext());
       } catch (error) {
         console.error("LIFF 初始化失敗：", error);
       }
     }
     initializeLiff();
     
-    // 每秒更新時間，使用本地時間格式（假設裝置已設定為正確時區）
+    // 每秒更新時間，使用本地時間（根據裝置設定）
     function updateTime() {
       const now = new Date();
       const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,19);
@@ -172,7 +178,7 @@
       createPicker("picker-diastolic", 60, 150, 80, 4);
       createPicker("picker-heartRate", 40, 180, 70, 4);
       
-      // 延遲後自動滾動到預設值並更新提示與置中選中效果
+      // 延遲後自動滾動至預設值，並更新提示與置中選中效果
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90, 4);
         scrollToValue("picker-diastolic", 80, 60, 4);
@@ -185,7 +191,7 @@
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
-      // 為每個轉輪選擇器加入 scroll 事件更新提示與選中效果
+      // 為每個轉輪選擇器加入 scroll 事件，持續更新提示與選中效果
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
           if (id === "picker-systolic")
@@ -244,7 +250,7 @@
     }
     
     /**
-     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新提示框
+     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新對應提示框
      * @param {string} containerId - 轉輪容器 ID
      * @param {number} min - 最小數值
      * @param {string} hintId - 提示框元素 ID
@@ -300,12 +306,26 @@
     
     // 送出按鈕事件：改為使用 liff.sendMessages() 發送固定格式訊息
     document.getElementById("submitBtn").addEventListener("click", async () => {
+      // 檢查是否在 LINE App 內部執行
+      if (!liff.isInClient()) {
+        alert("請在 LINE App 中使用此功能！");
+        return;
+      }
+      
+      // 取得聊天上下文並檢查是否有 conversationId
+      const context = liff.getContext();
+      if (!context || !context.conversationType) {
+        alert("目前無有效聊天上下文，無法發送訊息。");
+        return;
+      }
+      
       const systolic = getPickerValue("picker-systolic", 90);
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
       
-      // 固定格式訊息，如："本日血壓紀錄為125/95/71"
+      // 組合固定格式訊息
       const messageText = `上課簽到\n本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
+      console.log("準備發送訊息：", messageText);
       
       try {
         await liff.sendMessages([
@@ -315,7 +335,6 @@
           }
         ]);
         document.getElementById("result").textContent = "訊息已送出！";
-        // 發送成功後關閉 LIFF 視窗
         liff.closeWindow();
       } catch (error) {
         console.error("訊息送出失敗：", error);
