@@ -17,7 +17,7 @@
       max-width: 100%;
       margin: auto;
     }
-    /* 轉輪選擇器區：使用 flex 平均分配寬度，放在最上面 */
+    /* 轉輪選擇器區：使用 flex 平均分配寬度 */
     .picker-row {
       display: flex;
       justify-content: space-around;
@@ -87,19 +87,19 @@
       font-weight: bold;
       margin-top: 5px;
     }
-    /* 送出按鈕 */
+    /* 送出按鈕：較大 */
     button {
       font-size: 28px;
       padding: 16px 32px;
       margin-top: 20px;
     }
-    /* 調整結果文字 */
+    /* 結果訊息 */
     #result {
       margin-top: 20px;
       font-size: 28px;
       font-weight: bold;
     }
-    /* 時間 input 放在送出按鈕下方，尺寸縮小 */
+    /* 時間 input：放在送出按鈕下方，尺寸較小 */
     #datetime {
       width: 200px;
       height: 40px;
@@ -133,7 +133,7 @@
       </div>
     </div>
     
-    <!-- 送出按鈕 -->
+    <!-- 送出按鈕：改為觸發 LINE 傳送訊息 -->
     <button id="submitBtn">送出簽到記錄</button>
     
     <!-- 時間欄位：放在送出按鈕下方 -->
@@ -148,7 +148,6 @@
       try {
         await liff.init({ liffId: "YOUR_LIFF_ID" });
         console.log("LIFF 初始化成功！");
-        // 取得用戶資料
         const profile = await liff.getProfile();
         window.userProfile = profile;
       } catch (error) {
@@ -157,7 +156,7 @@
     }
     initializeLiff();
     
-    // 每秒更新時間（以本地時間顯示，不做額外調整）
+    // 每秒更新時間，使用本地時間格式（假設裝置已設定為正確時區）
     function updateTime() {
       const now = new Date();
       const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,19);
@@ -168,13 +167,12 @@
     
     // 當頁面載入時初始化轉輪選擇器
     document.addEventListener("DOMContentLoaded", () => {
-      // 建立轉輪選擇器：收縮壓 90～200 預設 120；舒張壓 60～150 預設 80；心率 40～180 預設 70
-      // 補白項數量設定為 4，顯示 9 個項目
+      // 建立轉輪選擇器：補白數量設定為 4（共顯示 9 個項目）
       createPicker("picker-systolic", 90, 200, 120, 4);
       createPicker("picker-diastolic", 60, 150, 80, 4);
       createPicker("picker-heartRate", 40, 180, 70, 4);
       
-      // 延遲後自動滾動至預設值，並更新提示與置中選中樣式
+      // 延遲後自動滾動到預設值並更新提示與置中選中效果
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90, 4);
         scrollToValue("picker-diastolic", 80, 60, 4);
@@ -187,7 +185,7 @@
         updateSelectedStyle("picker-heartRate");
       }, 100);
       
-      // 監聽 scroll 事件，持續更新提示與選中樣式
+      // 為每個轉輪選擇器加入 scroll 事件更新提示與選中效果
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
         document.getElementById(id).addEventListener("scroll", () => {
           if (id === "picker-systolic")
@@ -211,13 +209,11 @@
      */
     function createPicker(containerId, min, max, defaultVal, paddingCount) {
       const container = document.getElementById(containerId);
-      // 上補空白項
       for (let i = 0; i < paddingCount; i++) {
         const blank = document.createElement("div");
         blank.innerHTML = "&nbsp;";
         container.appendChild(blank);
       }
-      // 建立數字項目
       for (let i = min; i <= max; i++) {
         const numDiv = document.createElement("div");
         numDiv.textContent = i;
@@ -226,7 +222,6 @@
         });
         container.appendChild(numDiv);
       }
-      // 下補空白項
       for (let i = 0; i < paddingCount; i++) {
         const blank = document.createElement("div");
         blank.innerHTML = "&nbsp;";
@@ -244,12 +239,12 @@
     function scrollToValue(containerId, value, min, paddingCount) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
-      const targetOffset = (value - min + paddingCount) * itemHeight - (container.clientHeight/2 - itemHeight/2);
+      const targetOffset = (value - min + paddingCount) * itemHeight - (container.clientHeight / 2 - itemHeight / 2);
       container.scrollTo({ top: targetOffset, behavior: "smooth" });
     }
     
     /**
-     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新對應提示框
+     * 根據轉輪選擇器目前的 scrollTop 值計算出置中項目的數值，並更新提示框
      * @param {string} containerId - 轉輪容器 ID
      * @param {number} min - 最小數值
      * @param {string} hintId - 提示框元素 ID
@@ -258,7 +253,7 @@
     function updateHint(containerId, min, hintId, paddingCount) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
-      const centerPosition = container.scrollTop + (container.clientHeight/2 - itemHeight/2);
+      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
       const index = Math.round(centerPosition / itemHeight);
       const value = min + index - paddingCount;
       document.getElementById(hintId).textContent = value;
@@ -273,15 +268,15 @@
       const container = document.getElementById(containerId);
       const itemHeight = 30;
       const children = container.children;
-      const containerCenter = container.scrollTop + container.clientHeight/2;
+      const containerCenter = container.scrollTop + container.clientHeight / 2;
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
         if (!child.textContent.trim()) {
           child.classList.remove("selected-digit");
           continue;
         }
-        const childCenter = child.offsetTop + itemHeight/2;
-        if (Math.abs(childCenter - containerCenter) < itemHeight/2) {
+        const childCenter = child.offsetTop + itemHeight / 2;
+        if (Math.abs(childCenter - containerCenter) < itemHeight / 2) {
           child.classList.add("selected-digit");
         } else {
           child.classList.remove("selected-digit");
@@ -298,36 +293,33 @@
       const container = document.getElementById(containerId);
       const itemHeight = 30;
       const paddingCount = 4;
-      const centerPosition = container.scrollTop + (container.clientHeight/2 - itemHeight/2);
+      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
       const index = Math.round(centerPosition / itemHeight);
       return min + index - paddingCount;
     }
     
-    // 送出按鈕事件：收集時間、轉輪選擇器數值及用戶資料後，將資料以 JSON POST 至後端（或 Make Webhook）
+    // 送出按鈕事件：改為使用 liff.sendMessages() 發送固定格式訊息
     document.getElementById("submitBtn").addEventListener("click", async () => {
-      const datetime = document.getElementById("datetime").value;
       const systolic = getPickerValue("picker-systolic", 90);
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
-      const userId = window.userProfile ? window.userProfile.userId : "";
       
-      const data = { datetime, systolic, diastolic, heartRate, userId };
-      document.getElementById("result").textContent = "送出中...";
+      // 固定格式訊息，如："本日血壓紀錄為125/95/71"
+      const messageText = `本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
       
       try {
-        const response = await fetch("https://your-backend-domain.com/api/record", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-        if (response.ok) {
-          document.getElementById("result").textContent = "記錄成功！";
-        } else {
-          document.getElementById("result").textContent = "記錄失敗，請稍後再試。";
-        }
-      } catch (err) {
-        console.error(err);
-        document.getElementById("result").textContent = "網路錯誤，請檢查連線。";
+        await liff.sendMessages([
+          {
+            type: "text",
+            text: messageText
+          }
+        ]);
+        document.getElementById("result").textContent = "訊息已送出！";
+        // 發送成功後關閉 LIFF 視窗
+        liff.closeWindow();
+      } catch (error) {
+        console.error("訊息送出失敗：", error);
+        document.getElementById("result").textContent = "訊息送出失敗，請稍後再試。";
       }
     });
   </script>
