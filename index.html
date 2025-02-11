@@ -288,9 +288,9 @@
       const rocYear = now.getFullYear() - 1911;
       const month = (now.getMonth() + 1).toString().padStart(2, "0");
       const day = now.getDate().toString().padStart(2, "0");
-      const recordDate = `${rocYear}-${month}-${day}`;
+      const recordDate = `${rocYear}/${month}/${day}`;
       
-      const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n紀錄日期${recordDate}`;
+      const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n登錄日期${recordDate}`;
       
       try {
         await liff.sendMessages([{ type: "text", text: messageText }]);
