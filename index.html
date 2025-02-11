@@ -36,7 +36,7 @@
       margin-bottom: 10px;
       font-size: 20px;
     }
-    /* 轉輪容器：高度 270px（9 個 30px 項目），寬度 100% */
+    /* 轉輪容器 */
     .picker-container {
       width: 100%;
       height: 270px;
@@ -99,7 +99,7 @@
       font-size: 28px;
       font-weight: bold;
     }
-    /* 時間 input 放在送出按鈕下方 */
+    /* 時間 input */
     #datetime {
       width: 200px;
       height: 40px;
@@ -151,28 +151,98 @@
         if (!liff.isInClient()) {
           alert("請在 LINE App 中使用此功能！");
         }
-        const profile = await liff.getProfile();
-        window.userProfile = profile;
+        window.userProfile = await liff.getProfile();
       } catch (error) {
         console.error("LIFF 初始化失敗：", error);
       }
     }
     initializeLiff();
     
-    // 每秒更新時間，使用本地時間格式
+    // 更新時間欄位（本地 ISO 格式）
     function updateTime() {
       const now = new Date();
-      const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,19);
+      const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                              .toISOString().slice(0, 19);
       document.getElementById("datetime").value = localISOTime;
     }
     updateTime();
     setInterval(updateTime, 1000);
     
-    // 初始化轉輪選擇器
+    // 建立轉輪選擇器
+    function createPicker(containerId, min, max, paddingCount) {
+      const container = document.getElementById(containerId);
+      // 加入前置空白
+      for (let i = 0; i < paddingCount; i++) {
+        const blank = document.createElement("div");
+        blank.innerHTML = "&nbsp;";
+        container.appendChild(blank);
+      }
+      // 加入數字項目
+      for (let i = min; i <= max; i++) {
+        const numDiv = document.createElement("div");
+        numDiv.textContent = i;
+        numDiv.addEventListener("click", () => scrollToValue(containerId, i, min, paddingCount));
+        container.appendChild(numDiv);
+      }
+      // 加入後置空白
+      for (let i = 0; i < paddingCount; i++) {
+        const blank = document.createElement("div");
+        blank.innerHTML = "&nbsp;";
+        container.appendChild(blank);
+      }
+    }
+    
+    // 滾動至指定數值
+    function scrollToValue(containerId, value, min, paddingCount) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const targetOffset = (value - min + paddingCount) * itemHeight - (container.clientHeight / 2 - itemHeight / 2);
+      container.scrollTo({ top: targetOffset, behavior: "smooth" });
+    }
+    
+    // 更新提示數值
+    function updateHint(containerId, min, hintId, paddingCount) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
+      const index = Math.round(centerPosition / itemHeight);
+      const value = min + index - paddingCount;
+      document.getElementById(hintId).textContent = value;
+    }
+    
+    // 更新被選中的項目樣式
+    function updateSelectedStyle(containerId) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const containerCenter = container.scrollTop + container.clientHeight / 2;
+      Array.from(container.children).forEach(child => {
+        if (!child.textContent.trim()) {
+          child.classList.remove("selected-digit");
+          return;
+        }
+        const childCenter = child.offsetTop + itemHeight / 2;
+        if (Math.abs(childCenter - containerCenter) < itemHeight / 2) {
+          child.classList.add("selected-digit");
+        } else {
+          child.classList.remove("selected-digit");
+        }
+      });
+    }
+    
+    // 取得轉輪選擇器當前選取的值
+    function getPickerValue(containerId, min, paddingCount = 4) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
+      const index = Math.round(centerPosition / itemHeight);
+      return min + index - paddingCount;
+    }
+    
+    // 初始化選擇器與綁定 scroll 事件
     document.addEventListener("DOMContentLoaded", () => {
-      createPicker("picker-systolic", 90, 200, 120, 4);
-      createPicker("picker-diastolic", 60, 150, 80, 4);
-      createPicker("picker-heartRate", 40, 180, 70, 4);
+      createPicker("picker-systolic", 90, 200, 4);
+      createPicker("picker-diastolic", 60, 150, 4);
+      createPicker("picker-heartRate", 40, 180, 4);
       
       setTimeout(() => {
         scrollToValue("picker-systolic", 120, 90, 4);
@@ -181,9 +251,7 @@
         updateHint("picker-systolic", 90, "hint-systolic", 4);
         updateHint("picker-diastolic", 60, "hint-diastolic", 4);
         updateHint("picker-heartRate", 40, "hint-heartRate", 4);
-        updateSelectedStyle("picker-systolic");
-        updateSelectedStyle("picker-diastolic");
-        updateSelectedStyle("picker-heartRate");
+        ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => updateSelectedStyle(id));
       }, 100);
       
       ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
@@ -199,79 +267,12 @@
       });
     });
     
-    function createPicker(containerId, min, max, defaultVal, paddingCount) {
-      const container = document.getElementById(containerId);
-      for (let i = 0; i < paddingCount; i++) {
-        const blank = document.createElement("div");
-        blank.innerHTML = "&nbsp;";
-        container.appendChild(blank);
-      }
-      for (let i = min; i <= max; i++) {
-        const numDiv = document.createElement("div");
-        numDiv.textContent = i;
-        numDiv.addEventListener("click", () => {
-          scrollToValue(containerId, i, min, paddingCount);
-        });
-        container.appendChild(numDiv);
-      }
-      for (let i = 0; i < paddingCount; i++) {
-        const blank = document.createElement("div");
-        blank.innerHTML = "&nbsp;";
-        container.appendChild(blank);
-      }
-    }
-    
-    function scrollToValue(containerId, value, min, paddingCount) {
-      const container = document.getElementById(containerId);
-      const itemHeight = 30;
-      const targetOffset = (value - min + paddingCount) * itemHeight - (container.clientHeight / 2 - itemHeight / 2);
-      container.scrollTo({ top: targetOffset, behavior: "smooth" });
-    }
-    
-    function updateHint(containerId, min, hintId, paddingCount) {
-      const container = document.getElementById(containerId);
-      const itemHeight = 30;
-      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
-      const index = Math.round(centerPosition / itemHeight);
-      const value = min + index - paddingCount;
-      document.getElementById(hintId).textContent = value;
-    }
-    
-    function updateSelectedStyle(containerId) {
-      const container = document.getElementById(containerId);
-      const itemHeight = 30;
-      const children = container.children;
-      const containerCenter = container.scrollTop + container.clientHeight / 2;
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i];
-        if (!child.textContent.trim()) {
-          child.classList.remove("selected-digit");
-          continue;
-        }
-        const childCenter = child.offsetTop + itemHeight / 2;
-        if (Math.abs(childCenter - containerCenter) < itemHeight / 2) {
-          child.classList.add("selected-digit");
-        } else {
-          child.classList.remove("selected-digit");
-        }
-      }
-    }
-    
-    function getPickerValue(containerId, min) {
-      const container = document.getElementById(containerId);
-      const itemHeight = 30;
-      const paddingCount = 4;
-      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
-      const index = Math.round(centerPosition / itemHeight);
-      return min + index - paddingCount;
-    }
-    
+    // 送出按鈕事件：組合訊息並透過 LIFF 發送
     document.getElementById("submitBtn").addEventListener("click", async () => {
       if (!liff.isInClient()) {
         alert("請在 LINE App 中使用此功能！");
         return;
       }
-      // 放寬上下文檢查：只要有 userId 或 utouId 即視為有效
       const context = liff.getContext();
       if (!context || (!context.userId && !context.utouId)) {
         alert("目前無有效聊天上下文，請從個人對話中使用此功能。");
@@ -282,15 +283,17 @@
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
       
-      const messageText = `上課簽到\n本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
+      // 取得當下日期並轉換為民國年格式
+      const now = new Date();
+      const rocYear = now.getFullYear() - 1911;
+      const month = (now.getMonth() + 1).toString().padStart(2, "0");
+      const day = now.getDate().toString().padStart(2, "0");
+      const recordDate = `${rocYear}-${month}-${day}`;
+      
+      const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n紀錄日期(民國年)${recordDate}`;
       
       try {
-        await liff.sendMessages([
-          {
-            type: "text",
-            text: messageText
-          }
-        ]);
+        await liff.sendMessages([{ type: "text", text: messageText }]);
         document.getElementById("result").textContent = "訊息已送出！";
         liff.closeWindow();
       } catch (error) {
