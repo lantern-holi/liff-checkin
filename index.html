@@ -290,7 +290,7 @@
       const day = now.getDate().toString().padStart(2, "0");
       const recordDate = `${rocYear}-${month}-${day}`;
       
-      const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n紀錄日期(民國年)${recordDate}`;
+      const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n紀錄日期${recordDate}`;
       
       try {
         await liff.sendMessages([{ type: "text", text: messageText }]);
