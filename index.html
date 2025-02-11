@@ -159,6 +159,12 @@
     }
     initializeLiff();
     
+    // 解析 URL 查詢參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const courseClass = urlParams.get('class');     // 取得課程班級
+    const classdate = urlParams.get('classdate');      // 取得課程日期
+    const memberId = urlParams.get('member');          // 取得會員編號
+
     // 每秒更新時間，使用本地時間格式
     function updateTime() {
       const now = new Date();
@@ -282,7 +288,8 @@
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
       
-      const messageText = `上課簽到\n本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
+      // 組合訊息內容：先顯示課程日期與班級，再換行後顯示會員血壓紀錄
+      const messageText = `${classdate}${courseClass}\n${memberId}的血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
       
       try {
         await liff.sendMessages([
