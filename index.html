@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>逸香血壓紀錄簽到用</title>
+  <!-- 設定 viewport，禁止縮放 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
@@ -12,10 +13,15 @@
       text-align: center;
       position: relative;
     }
-    .container { max-width: 100%; margin: auto; }
+    .container {
+      max-width: 100%;
+      margin: auto;
+    }
+    /* 轉輪選擇器區：使用 flex 平均分配寬度 */
     .picker-row {
       display: flex;
       justify-content: space-around;
+      width: 100%;
       margin-bottom: 20px;
     }
     .picker-column {
@@ -25,7 +31,12 @@
       align-items: center;
       padding: 0 5px;
     }
-    .picker-label { font-weight: bold; margin-bottom: 10px; font-size: 20px; }
+    .picker-label {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+    /* 轉輪容器：高度 270px（9 個 30px 項目），寬度 100% */
     .picker-container {
       width: 100%;
       height: 270px;
@@ -38,7 +49,9 @@
       mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
     }
-    .picker-container::-webkit-scrollbar { display: none; }
+    .picker-container::-webkit-scrollbar {
+      display: none;
+    }
     .picker-container div {
       height: 30px;
       line-height: 30px;
@@ -48,11 +61,13 @@
       color: #aaa;
       transition: font-size 0.2s, color 0.2s;
     }
+    /* 置中選中效果 */
     .selected-digit {
       font-size: 62px !important;
       color: #000 !important;
       font-weight: bold !important;
     }
+    /* 中央指示線 */
     .picker-container::after {
       content: "";
       position: absolute;
@@ -65,9 +80,26 @@
       border-bottom: 1px solid #000;
       pointer-events: none;
     }
-    .picker-hint { font-size: 22px; color: #007AFF; font-weight: bold; margin-top: 5px; }
-    button { font-size: 28px; padding: 16px 32px; margin-top: 20px; }
-    #result { margin-top: 20px; font-size: 28px; font-weight: bold; }
+    /* 提示框 */
+    .picker-hint {
+      font-size: 22px;
+      color: #007AFF;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    /* 送出按鈕 */
+    button {
+      font-size: 28px;
+      padding: 16px 32px;
+      margin-top: 20px;
+    }
+    /* 結果訊息 */
+    #result {
+      margin-top: 20px;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    /* 時間 input 放在送出按鈕下方 */
     #datetime {
       width: 200px;
       height: 40px;
@@ -119,25 +151,55 @@
         if (!liff.isInClient()) {
           alert("請在 LINE App 中使用此功能！");
         }
-        window.userProfile = await liff.getProfile();
+        const profile = await liff.getProfile();
+        window.userProfile = profile;
       } catch (error) {
         console.error("LIFF 初始化失敗：", error);
       }
     }
     initializeLiff();
     
-    // 每秒更新時間（ISO格式）並顯示在 input 中
+    // 每秒更新時間，使用本地時間格式
     function updateTime() {
       const now = new Date();
-      const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-                              .toISOString().slice(0, 19);
+      const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,19);
       document.getElementById("datetime").value = localISOTime;
     }
     updateTime();
     setInterval(updateTime, 1000);
     
-    // 建立轉輪選擇器
-    function createPicker(containerId, min, max, paddingCount) {
+    // 初始化轉輪選擇器
+    document.addEventListener("DOMContentLoaded", () => {
+      createPicker("picker-systolic", 90, 200, 120, 4);
+      createPicker("picker-diastolic", 60, 150, 80, 4);
+      createPicker("picker-heartRate", 40, 180, 70, 4);
+      
+      setTimeout(() => {
+        scrollToValue("picker-systolic", 120, 90, 4);
+        scrollToValue("picker-diastolic", 80, 60, 4);
+        scrollToValue("picker-heartRate", 70, 40, 4);
+        updateHint("picker-systolic", 90, "hint-systolic", 4);
+        updateHint("picker-diastolic", 60, "hint-diastolic", 4);
+        updateHint("picker-heartRate", 40, "hint-heartRate", 4);
+        updateSelectedStyle("picker-systolic");
+        updateSelectedStyle("picker-diastolic");
+        updateSelectedStyle("picker-heartRate");
+      }, 100);
+      
+      ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
+        document.getElementById(id).addEventListener("scroll", () => {
+          if (id === "picker-systolic")
+            updateHint("picker-systolic", 90, "hint-systolic", 4);
+          if (id === "picker-diastolic")
+            updateHint("picker-diastolic", 60, "hint-diastolic", 4);
+          if (id === "picker-heartRate")
+            updateHint("picker-heartRate", 40, "hint-heartRate", 4);
+          updateSelectedStyle(id);
+        });
+      });
+    });
+    
+    function createPicker(containerId, min, max, defaultVal, paddingCount) {
       const container = document.getElementById(containerId);
       for (let i = 0; i < paddingCount; i++) {
         const blank = document.createElement("div");
@@ -147,7 +209,9 @@
       for (let i = min; i <= max; i++) {
         const numDiv = document.createElement("div");
         numDiv.textContent = i;
-        numDiv.addEventListener("click", () => scrollToValue(containerId, i, min, paddingCount));
+        numDiv.addEventListener("click", () => {
+          scrollToValue(containerId, i, min, paddingCount);
+        });
         container.appendChild(numDiv);
       }
       for (let i = 0; i < paddingCount; i++) {
@@ -178,10 +242,11 @@
       const itemHeight = 30;
       const children = container.children;
       const containerCenter = container.scrollTop + container.clientHeight / 2;
-      Array.from(children).forEach(child => {
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
         if (!child.textContent.trim()) {
           child.classList.remove("selected-digit");
-          return;
+          continue;
         }
         const childCenter = child.offsetTop + itemHeight / 2;
         if (Math.abs(childCenter - containerCenter) < itemHeight / 2) {
@@ -189,57 +254,24 @@
         } else {
           child.classList.remove("selected-digit");
         }
-      });
+      }
     }
     
-    function getPickerValue(containerId, min, paddingCount = 4) {
+    function getPickerValue(containerId, min) {
       const container = document.getElementById(containerId);
       const itemHeight = 30;
+      const paddingCount = 4;
       const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
       const index = Math.round(centerPosition / itemHeight);
       return min + index - paddingCount;
     }
     
-    // 初始化所有選擇器與綁定 scroll 事件
-    document.addEventListener("DOMContentLoaded", () => {
-      ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach((id, idx) => {
-        const ranges = [
-          { min: 90, max: 200 },
-          { min: 60, max: 150 },
-          { min: 40, max: 180 }
-        ];
-        createPicker(id, ranges[idx].min, ranges[idx].max, 4);
-      });
-      
-      setTimeout(() => {
-        scrollToValue("picker-systolic", 120, 90, 4);
-        scrollToValue("picker-diastolic", 80, 60, 4);
-        scrollToValue("picker-heartRate", 70, 40, 4);
-        updateHint("picker-systolic", 90, "hint-systolic", 4);
-        updateHint("picker-diastolic", 60, "hint-diastolic", 4);
-        updateHint("picker-heartRate", 40, "hint-heartRate", 4);
-        ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => updateSelectedStyle(id));
-      }, 100);
-      
-      ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
-        document.getElementById(id).addEventListener("scroll", () => {
-          if (id === "picker-systolic")
-            updateHint("picker-systolic", 90, "hint-systolic", 4);
-          if (id === "picker-diastolic")
-            updateHint("picker-diastolic", 60, "hint-diastolic", 4);
-          if (id === "picker-heartRate")
-            updateHint("picker-heartRate", 40, "hint-heartRate", 4);
-          updateSelectedStyle(id);
-        });
-      });
-    });
-    
-    // 送出按鈕事件：取得選擇值、組合訊息後發送
     document.getElementById("submitBtn").addEventListener("click", async () => {
       if (!liff.isInClient()) {
         alert("請在 LINE App 中使用此功能！");
         return;
       }
+      // 放寬上下文檢查：只要有 userId 或 utouId 即視為有效
       const context = liff.getContext();
       if (!context || (!context.userId && !context.utouId)) {
         alert("目前無有效聊天上下文，請從個人對話中使用此功能。");
@@ -250,17 +282,15 @@
       const diastolic = getPickerValue("picker-diastolic", 60);
       const heartRate = getPickerValue("picker-heartRate", 40);
       
-      // 取得當下日期並轉換為民國年格式
-      const now = new Date();
-      const rocYear = now.getFullYear() - 1911;
-      const month = (now.getMonth() + 1).toString().padStart(2, '0');
-      const day = now.getDate().toString().padStart(2, '0');
-      const recordDate = `${rocYear}-${month}-${day}`;
-      
-      const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n紀錄日期${recordDate}`;
+      const messageText = `上課簽到\n本日血壓紀錄為${systolic}/${diastolic}/${heartRate}`;
       
       try {
-        await liff.sendMessages([{ type: "text", text: messageText }]);
+        await liff.sendMessages([
+          {
+            type: "text",
+            text: messageText
+          }
+        ]);
         document.getElementById("result").textContent = "訊息已送出！";
         liff.closeWindow();
       } catch (error) {
