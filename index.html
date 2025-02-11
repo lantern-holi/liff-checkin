@@ -2,6 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <meta name="format-detection" content="telephone=no">
   <title>逸香血壓紀錄簽到用</title>
   <!-- 設定 viewport，禁止縮放 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -288,7 +289,7 @@
       const rocYear = now.getFullYear() - 1911;
       const month = (now.getMonth() + 1).toString().padStart(2, "0");
       const day = now.getDate().toString().padStart(2, "0");
-      const recordDate = `${rocYear}/${month}/${day}`;
+      const recordDate = `${rocYear}-${month}-${day}`;
       
       const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n登錄日期${recordDate}`;
       
