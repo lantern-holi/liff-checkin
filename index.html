@@ -1,42 +1,305 @@
-<!-- 送出按鈕事件：組合訊息並透過 LIFF 發送 -->
-<script>
-  document.getElementById("submitBtn").addEventListener("click", async () => {
-    if (!liff.isInClient()) {
-      alert("請在 LINE App 中使用此功能！");
-      return;
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="format-detection" content="telephone=no">
+  <title>逸香血壓紀錄簽到用</title>
+  <!-- 設定 viewport，禁止縮放 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 20px;
+      text-align: center;
     }
-    const context = liff.getContext();
-    if (!context || (!context.userId && !context.utouId)) {
-      alert("目前無有效聊天上下文，請從個人對話中使用此功能。");
-      return;
+    .container {
+      max-width: 100%;
+      margin: auto;
+    }
+    /* 轉輪選擇器區 */
+    .picker-row {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+    .picker-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 5px;
+    }
+    .picker-label {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+    .picker-container {
+      width: 100%;
+      height: 270px;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      border: 1px solid #ccc;
+      position: relative;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+    }
+    .picker-container::-webkit-scrollbar {
+      display: none;
+    }
+    .picker-container div {
+      height: 30px;
+      line-height: 30px;
+      scroll-snap-align: center;
+      font-size: 22px;
+      cursor: pointer;
+      color: #aaa;
+      transition: font-size 0.2s, color 0.2s;
+    }
+    .selected-digit {
+      font-size: 62px !important;
+      color: #000 !important;
+      font-weight: bold !important;
+    }
+    .picker-container::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 30px;
+      margin-top: -15px;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      pointer-events: none;
+    }
+    .picker-hint {
+      font-size: 22px;
+      color: #007AFF;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    button {
+      font-size: 28px;
+      padding: 16px 32px;
+      margin-top: 20px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    #datetime {
+      width: 200px;
+      height: 40px;
+      font-size: 20px;
+      margin: 20px auto;
+      padding: 5px;
+      background-color: #f5f5f5;
+      text-align: center;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 轉輪選擇器 -->
+    <div class="picker-row">
+      <div class="picker-column">
+        <div class="picker-label">收縮壓</div>
+        <div id="picker-systolic" class="picker-container"></div>
+        <div id="hint-systolic" class="picker-hint">120</div>
+      </div>
+      <div class="picker-column">
+        <div class="picker-label">舒張壓</div>
+        <div id="picker-diastolic" class="picker-container"></div>
+        <div id="hint-diastolic" class="picker-hint">80</div>
+      </div>
+      <div class="picker-column">
+        <div class="picker-label">心率</div>
+        <div id="picker-heartRate" class="picker-container"></div>
+        <div id="hint-heartRate" class="picker-hint">70</div>
+      </div>
+    </div>
+    
+    <!-- 送出按鈕 -->
+    <button id="submitBtn">送出簽到記錄</button>
+    
+    <!-- 時間欄位 -->
+    <input type="datetime-local" id="datetime" step="1" readonly>
+    
+    <!-- 結果訊息 -->
+    <div id="result"></div>
+  </div>
+  
+  <script>
+    // LIFF 初始化
+    async function initializeLiff() {
+      try {
+        await liff.init({ liffId: "2006876503-3jBVjEAR" });
+        if (!liff.isInClient()) {
+          alert("請在 LINE App 中使用此功能！");
+        }
+        window.userProfile = await liff.getProfile();
+      } catch (error) {
+        console.error("LIFF 初始化失敗：", error);
+      }
+    }
+    initializeLiff();
+    
+    // 更新時間欄位（本地 ISO 格式）
+    function updateTime() {
+      const now = new Date();
+      const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                              .toISOString().slice(0, 19);
+      document.getElementById("datetime").value = localISOTime;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+    
+    // 建立轉輪選擇器 (可用於收縮壓、舒張壓與心率)
+    function createPicker(containerId, min, max, paddingCount) {
+      const container = document.getElementById(containerId);
+      // 前置空白
+      for (let i = 0; i < paddingCount; i++) {
+        const blank = document.createElement("div");
+        blank.innerHTML = "&nbsp;";
+        container.appendChild(blank);
+      }
+      // 數字項目
+      for (let i = min; i <= max; i++) {
+        const numDiv = document.createElement("div");
+        numDiv.textContent = i;
+        numDiv.addEventListener("click", () => scrollToValue(containerId, i, min, paddingCount));
+        container.appendChild(numDiv);
+      }
+      // 後置空白
+      for (let i = 0; i < paddingCount; i++) {
+        const blank = document.createElement("div");
+        blank.innerHTML = "&nbsp;";
+        container.appendChild(blank);
+      }
     }
     
-    const systolic = getPickerValue("picker-systolic", 90);
-    const diastolic = getPickerValue("picker-diastolic", 60);
-    const heartRate = getPickerValue("picker-heartRate", 40);
-    
-    // 取得當下日期並轉換為民國年格式
-    const now = new Date();
-    const rocYear = now.getFullYear() - 1911;
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    const day = now.getDate().toString().padStart(2, "0");
-    const recordDate = `${rocYear}-${month}-${day}`;
-    
-    // 取得目前時間(24H制)的時與分
-    const hours = now.getHours().toString().padStart(2, "0");
-    const minutes = now.getMinutes().toString().padStart(2, "0");
-    const measureTime = `${hours}:${minutes}`;
-    
-    // 組合最終訊息內容
-    const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n登錄日期${recordDate}\n量測時間${measureTime}`;
-    
-    try {
-      await liff.sendMessages([{ type: "text", text: messageText }]);
-      document.getElementById("result").textContent = "訊息已送出！";
-      liff.closeWindow();
-    } catch (error) {
-      console.error("訊息送出失敗：", error);
-      document.getElementById("result").textContent = "訊息送出失敗，請稍後再試。";
+    // 滾動至指定數值
+    function scrollToValue(containerId, value, min, paddingCount) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const targetOffset = (value - min + paddingCount) * itemHeight - (container.clientHeight / 2 - itemHeight / 2);
+      container.scrollTo({ top: targetOffset, behavior: "smooth" });
     }
-  });
-</script>
+    
+    // 更新提示數值
+    function updateHint(containerId, min, hintId, paddingCount) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
+      const index = Math.round(centerPosition / itemHeight);
+      const value = min + index - paddingCount;
+      document.getElementById(hintId).textContent = value;
+    }
+    
+    // 更新選中樣式
+    function updateSelectedStyle(containerId) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const containerCenter = container.scrollTop + container.clientHeight / 2;
+      Array.from(container.children).forEach(child => {
+        if (!child.textContent.trim()) {
+          child.classList.remove("selected-digit");
+          return;
+        }
+        const childCenter = child.offsetTop + itemHeight / 2;
+        if (Math.abs(childCenter - containerCenter) < itemHeight / 2) {
+          child.classList.add("selected-digit");
+        } else {
+          child.classList.remove("selected-digit");
+        }
+      });
+    }
+    
+    // 取得轉輪選擇器當前的值
+    function getPickerValue(containerId, min, paddingCount = 4) {
+      const container = document.getElementById(containerId);
+      const itemHeight = 30;
+      const centerPosition = container.scrollTop + (container.clientHeight / 2 - itemHeight / 2);
+      const index = Math.round(centerPosition / itemHeight);
+      return min + index - paddingCount;
+    }
+    
+    // 初始化所有選擇器及事件綁定
+    document.addEventListener("DOMContentLoaded", () => {
+      createPicker("picker-systolic", 90, 200, 4);
+      createPicker("picker-diastolic", 60, 150, 4);
+      createPicker("picker-heartRate", 40, 180, 4);
+      
+      setTimeout(() => {
+        scrollToValue("picker-systolic", 120, 90, 4);
+        scrollToValue("picker-diastolic", 80, 60, 4);
+        scrollToValue("picker-heartRate", 70, 40, 4);
+        updateHint("picker-systolic", 90, "hint-systolic", 4);
+        updateHint("picker-diastolic", 60, "hint-diastolic", 4);
+        updateHint("picker-heartRate", 40, "hint-heartRate", 4);
+        ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => updateSelectedStyle(id));
+      }, 100);
+      
+      ["picker-systolic", "picker-diastolic", "picker-heartRate"].forEach(id => {
+        document.getElementById(id).addEventListener("scroll", () => {
+          if (id === "picker-systolic")
+            updateHint("picker-systolic", 90, "hint-systolic", 4);
+          if (id === "picker-diastolic")
+            updateHint("picker-diastolic", 60, "hint-diastolic", 4);
+          if (id === "picker-heartRate")
+            updateHint("picker-heartRate", 40, "hint-heartRate", 4);
+          updateSelectedStyle(id);
+        });
+      });
+    });
+    
+    // 送出按鈕事件：組合訊息並透過 LIFF 發送
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      if (!liff.isInClient()) {
+        alert("請在 LINE App 中使用此功能！");
+        return;
+      }
+      const context = liff.getContext();
+      if (!context || (!context.userId && !context.utouId)) {
+        alert("目前無有效聊天上下文，請從個人對話中使用此功能。");
+        return;
+      }
+      
+      // 取得轉輪選擇器數值
+      const systolic = getPickerValue("picker-systolic", 90);
+      const diastolic = getPickerValue("picker-diastolic", 60);
+      const heartRate = getPickerValue("picker-heartRate", 40);
+      
+      // 取得當下日期並轉換為民國年格式
+      const now = new Date();
+      const rocYear = now.getFullYear() - 1911;
+      const month = (now.getMonth() + 1).toString().padStart(2, "0");
+      const day = now.getDate().toString().padStart(2, "0");
+      const recordDate = `${rocYear}-${month}-${day}`;
+      
+      // 取得量測時間（24H制：時與分）
+      const hours = now.getHours().toString().padStart(2, "0");
+      const minutes = now.getMinutes().toString().padStart(2, "0");
+      const measureTime = `${hours}:${minutes}`;
+      
+      // 組合最終訊息
+      const messageText = `血壓紀錄為${systolic}/${diastolic}/${heartRate}\n登錄日期${recordDate}\n量測時間${measureTime}`;
+      
+      try {
+        await liff.sendMessages([{ type: "text", text: messageText }]);
+        document.getElementById("result").textContent = "訊息已送出！";
+        liff.closeWindow();
+      } catch (error) {
+        console.error("訊息送出失敗：", error);
+        document.getElementById("result").textContent = "訊息送出失敗，請稍後再試。";
+      }
+    });
+  </script>
+</body>
+</html>
